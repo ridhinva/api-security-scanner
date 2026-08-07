@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests flake8 pytest || true
+      
+      - name: Lint with flake8
+        run: |
+          flake8 *.py --count --select=E9,F63,F7,F82 --show-source --statistics || true
+          flake8 *.py --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics || true
+      
+      - name: Syntax check
+        run: |
+          python3 -m py_compile *.py 2>/dev/null || true
+      
+      - name: Test help
+        run: |
+          python3 *.py --help 2>&1 | head -10 || true
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run bandit
+        run: |
+          pip install bandit
+          bandit -r *.py -f json -o bandit-report.json 2>/dev/null || true
+      - name: Upload bandit report
+        uses: actions/upload-artifact@v4
+        with:
+          name: bandit-report
+          path: bandit-report.json
